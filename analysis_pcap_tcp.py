@@ -10,7 +10,9 @@ class Flow:
         self.sender_port = sender_port
         self.receiver_port = receiver_port
 
-    
+    def sent(self, seq_num):
+        if seq_num in self.unacked_packets:
+            
 
     def match(self, source_port, dest_port):
         if self.sender_port == source_port or self.sender_port == dest_port:
