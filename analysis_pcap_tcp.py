@@ -1,8 +1,9 @@
 import dpkt
 import struct
 
-class Packet:
-    i = 10
+class Flow:
+
+    
 
 
 def test():
