@@ -12,17 +12,32 @@ class Flow:
         self.unacked_packets = set()
         self.lost_packets = 0
         self.total_packets = 0
+        self.sent_time = {}
+        self.rtt_estimate = 0
+        self.alpha = 0.125
 
-    def sent(self, seq_num):
+    def sent(self, seq_num, ts):
         self.total_packets += 1
         if seq_num in self.unacked_packets:
             self.lost_packets += 1
         self.unacked_packets.add(seq_num)
+        self.sent_time[seq_num] = ts
 
-    def acked(self, ack_num):
+    def acked(self, ack_num, ts):
+
+        acked_packets = []
+        rtt = None
+
         for num in self.unacked_packets:
-            if num < ack_num:
-                self.unacked_packets.discard(num)
+            if num <= ack_num:
+                acked_packets.append(num)
+                if num == ack_num:
+                    rtt = ts - self.sent_time[num]
+                    self.rtt_estimate = self.rtt_estimate * self.alpha + (1 - self.alpha) * rtt
+
+        for num in acked_packets:
+            self.unacked_packets.discard(num)
+
 
     def match(self, source_port, dest_port):
         if self.sender_port == source_port or self.sender_port == dest_port:
@@ -86,18 +101,21 @@ def test():
         if current_flow.handshake_stage == 1 and current_flow.sender_port != source_port and flags == 18: # SYN ACK
             current_flow.handshake_stage = 2
 
-        if current_flow.handshake_stage == 2 and current_flow.sender_port == source_port and flags == 16: # ACK
+        elif current_flow.handshake_stage == 2 and current_flow.sender_port == source_port and flags == 16: # ACK
             current_flow.handshake_stage = 3
 
         elif current_flow.handshake_stage == 3:
             if current_flow.is_sender(source_port=source_port):
-                current_flow.sent(seq_num=seq_num)
+                current_flow.sent(seq_num=seq_num, ts=ts)
+            else:
+                rtt = current_flow.acked(ack_num=ack_num, ts=ts)
+                print(rtt)
 
-        print(ts)
+
 
         # print(current_flow.unacked_packets)
         count += 1
-        if count == 10:
+        if count == 100:
             break
 
         # elif flags == 16:
