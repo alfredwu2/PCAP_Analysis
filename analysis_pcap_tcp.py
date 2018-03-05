@@ -3,16 +3,25 @@ import struct
 
 class Flow:
 
-    data_sent = 0
-    unacked_packets = {}
-
     def __init__(self, sender_port, receiver_port):
         self.sender_port = sender_port
         self.receiver_port = receiver_port
 
+        self.data_sent = 0
+        self.unacked_packets = set()
+        self.lost_packets = 0
+        self.total_packets = 0
+
     def sent(self, seq_num):
+        self.total_packets += 1
         if seq_num in self.unacked_packets:
-            
+            self.lost_packets += 1
+        self.unacked_packets.add(seq_num)
+
+    def acked(self, ack_num):
+        for num in self.unacked_packets:
+            if num < ack_num:
+                self.unacked_packets.discard(num)
 
     def match(self, source_port, dest_port):
         if self.sender_port == source_port or self.sender_port == dest_port:
@@ -20,6 +29,11 @@ class Flow:
         else:
             return False
 
+    def is_sender(self, source_port):
+        if self.sender_port == source_port:
+            return True
+        else:
+            return False
 
 
 
@@ -67,12 +81,15 @@ def test():
 
 
 
+        if current_flow.is_sender(source_port=source_port):
+            current_flow.sent(seq_num=seq_num)
 
-
-
-        count += 1
-        if count == 10:
-            break
+        # print(current_flow.unacked_packets)
+        #
+        #
+        # count += 1
+        # if count == 10:
+        #     break
 
         # elif flags == 16:
         #     print("ACK")
@@ -86,6 +103,9 @@ def test():
 
         # result = struct.unpack("14c52c", buf)
         # print(result)
+
+    for flow in flows:
+        print("%d / %d" % (flow.lost_packets, flow.total_packets))
 
 if __name__ == "__main__":
     test()
