@@ -7,6 +7,7 @@ class Flow:
         self.sender_port = sender_port
         self.receiver_port = receiver_port
 
+        self.handshake_stage = 1
         self.data_sent = 0
         self.unacked_packets = set()
         self.lost_packets = 0
@@ -69,27 +70,35 @@ def test():
         # print(ack_num)
         # print(flags)
 
+        # identify or create flow
         if flags == 2:
             new_flow = Flow(sender_port=source_port, receiver_port=dest_port)
             flows.append(new_flow)
             current_flow = new_flow
+            # TODO calculate end of TCP 3-way handshake
         else:
             for flow in flows:
                 if flow.match(source_port=source_port, dest_port=dest_port):
                     current_flow = flow
                     break
 
+        # etc
+        if current_flow.handshake_stage == 1 and current_flow.sender_port != source_port and flags == 18: # SYN ACK
+            current_flow.handshake_stage = 2
 
+        if current_flow.handshake_stage == 2 and current_flow.sender_port == source_port and flags == 16: # ACK
+            current_flow.handshake_stage = 3
 
-        if current_flow.is_sender(source_port=source_port):
-            current_flow.sent(seq_num=seq_num)
+        elif current_flow.handshake_stage == 3:
+            if current_flow.is_sender(source_port=source_port):
+                current_flow.sent(seq_num=seq_num)
+
+        print(ts)
 
         # print(current_flow.unacked_packets)
-        #
-        #
-        # count += 1
-        # if count == 10:
-        #     break
+        count += 1
+        if count == 10:
+            break
 
         # elif flags == 16:
         #     print("ACK")
