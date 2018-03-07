@@ -15,7 +15,6 @@ class Flow:
         self.sender_port = sender_port
         self.receiver_port = receiver_port
 
-
         self.handshake_stage = 1
         self.data_sent = 0
         self.unacked_packets = set()
@@ -26,10 +25,19 @@ class Flow:
         self.alpha = 0.125
         self.starttime = starttime
 
+        self.consecutive = 0
+        self.cwindows = []
+        self.ack_count = {}
+
+        self.triple_dupes = 0
+
     def throughput(self):
         return self.data_sent / (self.endtime - self.starttime)
 
     def sent(self, seq_num, payload, ts, size):
+
+        self.consecutive += 1
+
         self.total_packets += 1
         self.data_sent += size
 
@@ -38,12 +46,26 @@ class Flow:
         for packet in self.unacked_packets:
             if packet.seq_num == seq_num:
                 self.lost_packets += 1
+
+                if self.ack_count[seq_num] >= 3:
+                    self.triple_dupes += 1
                 return
 
         packet = Packet(seq_num=seq_num, payload=payload)
         self.unacked_packets.add(packet)
 
     def acked(self, ack_num, ts):
+
+        if ack_num in self.ack_count:
+            self.ack_count[ack_num] += 1
+        else:
+            self.ack_count[ack_num] = 1
+
+
+        if len(self.cwindows) < 10 and self.consecutive > 0:
+            # self.cwindows.append(self.consecutive)
+            self.cwindows.append(len(self.unacked_packets))
+        self.consecutive = 0
 
         acked_packets = []
 
@@ -72,7 +94,6 @@ class Flow:
             return True
         else:
             return False
-
 
 
 def test():
@@ -175,13 +196,18 @@ def test():
         print("Second transaction ack number: %d" % flow.second_ack)
         print("Second transaction receive window: %d" % flow.second_window)
 
-        p = flow.lost_packets / flow.total_packets
+        count = 1
+        for window in flow.cwindows:
+            print("Congestion window %d: %d" % (count, window))
+            count += 1
 
+        p = flow.lost_packets / flow.total_packets
         print("Packets lost: %d / %d = %f" % (flow.lost_packets, flow.total_packets, p))
         print("RTT: %f seconds" % (flow.rtt_estimate))
         print("Empirical throughput: %d bytes per second" % flow.throughput())
 
-
+        print("Packets retransmitted due to triple duplicate ACKs: %d" % flow.triple_dupes)
+        print("Packets retransmitted due to timeout: %d" % (flow.lost_packets - flow.triple_dupes))
 
         if p == 0:
             print("Theoretical throughput: undefined")
