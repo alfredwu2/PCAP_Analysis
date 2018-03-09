@@ -96,6 +96,7 @@ class Flow:
             return False
 
 
+
 def test():
     f = open('assignment2.pcap', 'rb')
     pcap =  dpkt.pcap.Reader(f)
