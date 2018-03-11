@@ -216,6 +216,7 @@ def test():
             theoretical_throughput = (math.sqrt(1.5) * 1460) / (flow.rtt_estimate * math.sqrt(p))
             print("Theoretical throughput: %d bytes per second" % theoretical_throughput)
 
+        print("test")
         print("\n")
 
 if __name__ == "__main__":
